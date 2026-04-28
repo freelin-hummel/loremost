@@ -344,24 +344,29 @@ export class WorkspaceService {
       }
 
       if (typeof updateWorkspaceDto.mcpEnabled !== 'undefined') {
-        if (!this.licenseCheckService.hasFeature(ws.licenseKey, 'mcp', ws.plan)) {
+        if (!this.licenseCheckService.hasFeature(ws.licenseKey, Feature.MCP, ws.plan)) {
           throw new ForbiddenException(
             'This feature requires a valid license',
           );
         }
       }
 
+      const gatedUpdates: [boolean, string][] = [
+        [typeof updateWorkspaceDto.disablePublicSharing !== 'undefined', Feature.SHARING_CONTROLS],
+        [typeof updateWorkspaceDto.trashRetentionDays !== 'undefined', Feature.RETENTION],
+        [typeof updateWorkspaceDto.restrictApiToAdmins !== 'undefined', Feature.API_KEYS],
+        [typeof updateWorkspaceDto.allowMemberTemplates !== 'undefined', Feature.TEMPLATES],
+      ];
+
       if (
-        typeof updateWorkspaceDto.disablePublicSharing !== 'undefined' ||
-        typeof updateWorkspaceDto.trashRetentionDays !== 'undefined' ||
-        typeof updateWorkspaceDto.restrictApiToAdmins !== 'undefined' ||
-        typeof updateWorkspaceDto.allowMemberTemplates !== 'undefined'
+        gatedUpdates.some(
+          ([isUpdating, feature]) =>
+            isUpdating && !this.licenseCheckService.hasFeature(ws.licenseKey, feature, ws.plan),
+        )
       ) {
-        if (!this.licenseCheckService.hasFeature(ws.licenseKey, Feature.SECURITY_SETTINGS, ws.plan)) {
-          throw new ForbiddenException(
-            'This feature requires a valid license',
-          );
-        }
+        throw new ForbiddenException(
+          'This feature requires a valid license',
+        );
       }
 
       if (

@@ -23,6 +23,7 @@ import { WatcherModule } from './watcher/watcher.module';
 import { FavoriteModule } from './favorite/favorite.module';
 import { SessionModule } from './session/session.module';
 import { ClsMiddleware } from 'nestjs-cls';
+import { TemplateModule } from './template/template.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { ClsMiddleware } from 'nestjs-cls';
     AttachmentModule,
     CommentModule,
     FavoriteModule,
+    TemplateModule,
     SearchModule,
     SpaceModule,
     GroupModule,

@@ -7,13 +7,16 @@ import { buildSsoLoginUrl } from "@/ee/security/sso.utils.ts";
 import { SSO_PROVIDER } from "@/ee/security/contants.ts";
 import { GoogleIcon } from "@/components/icons/google-icon.tsx";
 import { LdapLoginModal } from "@/ee/components/ldap-login-modal.tsx";
+import { Feature, isHiddenFeature } from "@/ee/features.ts";
 
 export default function SsoLogin() {
   const { data, isLoading } = useWorkspacePublicDataQuery();
   const [ldapModalOpened, setLdapModalOpened] = useState(false);
   const [selectedLdapProvider, setSelectedLdapProvider] = useState<IAuthProvider | null>(null);
+  const ssoHidden =
+    isHiddenFeature(Feature.SSO_CUSTOM) && isHiddenFeature(Feature.SSO_GOOGLE);
 
-  if (!data?.authProviders || data?.authProviders?.length === 0) {
+  if (ssoHidden || !data?.authProviders || data?.authProviders?.length === 0) {
     return null;
   }
 

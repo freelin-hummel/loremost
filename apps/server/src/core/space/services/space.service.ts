@@ -146,7 +146,7 @@ export class SpaceService {
         typeof updateSpaceDto.disablePublicSharing !== 'undefined' &&
         !this.licenseCheckService.hasFeature(
           workspace.licenseKey,
-          Feature.SECURITY_SETTINGS,
+          Feature.SHARING_CONTROLS,
           workspace.plan,
         )
       ) {

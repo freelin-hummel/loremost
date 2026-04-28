@@ -17,7 +17,10 @@ import { PageRepo } from '@docmost/db/repos/page/page.repo';
 import { CursorPaginationResult } from '@docmost/db/pagination/cursor-pagination';
 import { QueueJob, QueueName } from '../../integrations/queue/constants';
 import { extractUserMentionIdsFromJson } from '../../common/helpers/prosemirror/utils';
-import { ICommentNotificationJob } from '../../integrations/queue/constants/queue.interface';
+import {
+  ICommentNotificationJob,
+  ICommentResolvedNotificationJob,
+} from '../../integrations/queue/constants/queue.interface';
 import { WsService } from '../../ws/ws.service';
 
 @Injectable()
@@ -79,7 +82,9 @@ export class CommentService {
     });
 
     if (createCommentDto.yjsSelection) {
-      const parsed = yjsSelectionSchema.safeParse(createCommentDto.yjsSelection);
+      const parsed = yjsSelectionSchema.safeParse(
+        createCommentDto.yjsSelection,
+      );
       if (!parsed.success) {
         this.logger.warn(
           `Invalid yjsSelection for comment ${inserted.id}: ${parsed.error.message}`,
@@ -206,6 +211,67 @@ export class CommentService {
     return comment;
   }
 
+  async resolve(
+    comment: Comment,
+    resolved: boolean,
+    authUser: User,
+  ): Promise<Comment> {
+    const currentlyResolved = comment.resolvedAt != null;
+    if (currentlyResolved === resolved) {
+      return comment;
+    }
+
+    const resolvedAt = resolved ? new Date() : null;
+    const resolvedById = resolved ? authUser.id : null;
+
+    await this.commentRepo.updateComment(
+      {
+        resolvedAt,
+        resolvedById,
+        updatedAt: new Date(),
+      },
+      comment.id,
+    );
+
+    try {
+      await this.collaborationGateway.handleYjsEvent(
+        'resolveCommentMark',
+        `page.${comment.pageId}`,
+        {
+          commentId: comment.id,
+          resolved,
+          user: authUser,
+        },
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Failed to update comment mark for comment ${comment.id}`,
+        error,
+      );
+    }
+
+    const updatedComment = await this.findById(comment.id);
+
+    this.wsService.emitCommentEvent(comment.spaceId, comment.pageId, {
+      operation: 'commentResolved',
+      pageId: comment.pageId,
+      comment: updatedComment,
+    });
+
+    if (resolved) {
+      await this.queueCommentResolvedNotification(
+        comment.id,
+        comment.creatorId,
+        comment.pageId,
+        comment.spaceId,
+        comment.workspaceId,
+        authUser.id,
+      );
+    }
+
+    return updatedComment;
+  }
+
   private async queueCommentNotification(
     content: any,
     oldMentionIds: string[],
@@ -222,7 +288,8 @@ export class CommentService {
       (id) => id !== actorId && !oldMentionIds.includes(id),
     );
 
-    if (newMentionIds.length === 0 && !notifyWatchers && !parentCommentId) return;
+    if (newMentionIds.length === 0 && !notifyWatchers && !parentCommentId)
+      return;
 
     const jobData: ICommentNotificationJob = {
       commentId,
@@ -235,8 +302,28 @@ export class CommentService {
       notifyWatchers,
     };
 
+    await this.notificationQueue.add(QueueJob.COMMENT_NOTIFICATION, jobData);
+  }
+
+  private async queueCommentResolvedNotification(
+    commentId: string,
+    commentCreatorId: string,
+    pageId: string,
+    spaceId: string,
+    workspaceId: string,
+    actorId: string,
+  ) {
+    const jobData: ICommentResolvedNotificationJob = {
+      commentId,
+      commentCreatorId,
+      pageId,
+      spaceId,
+      workspaceId,
+      actorId,
+    };
+
     await this.notificationQueue.add(
-      QueueJob.COMMENT_NOTIFICATION,
+      QueueJob.COMMENT_RESOLVED_NOTIFICATION,
       jobData,
     );
   }
