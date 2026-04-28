@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -30,6 +31,12 @@ import {
   UpdateTemplateDto,
   UseTemplateDto,
 } from './dto/template.dto';
+
+type WorkspaceSettings = {
+  templates?: {
+    allowMemberTemplates?: boolean;
+  };
+};
 
 @Injectable()
 export class TemplateService {
@@ -170,8 +177,12 @@ export class TemplateService {
     await this.validateCanViewTemplate(template, user, workspace.id);
     await this.validateCanCreatePage(dto, user);
 
+    if (!template.title?.trim()) {
+      throw new BadRequestException('Template title is required');
+    }
+
     return this.pageService.create(user.id, workspace.id, {
-      title: template.title ?? 'Untitled',
+      title: template.title,
       icon: template.icon ?? undefined,
       spaceId: dto.spaceId,
       parentPageId: dto.parentPageId,
@@ -288,9 +299,7 @@ export class TemplateService {
   }
 
   private membersCanManageTemplates(workspace: Workspace) {
-    return (
-      (workspace.settings as Record<string, any>)?.templates
-        ?.allowMemberTemplates === true
-    );
+    const settings = workspace.settings as WorkspaceSettings | null;
+    return settings?.templates?.allowMemberTemplates === true;
   }
 }
