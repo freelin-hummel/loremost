@@ -239,15 +239,19 @@ export class TemplateService {
       return;
     }
 
-    if (
-      !this.membersCanManageTemplates(workspace) ||
-      template.creatorId !== user.id ||
-      !template.spaceId
-    ) {
+    if (!this.membersCanManageTemplates(workspace)) {
       throw new ForbiddenException();
     }
 
-    await this.validateCanManageSpaceTemplates(template.spaceId, user);
+    if (template.creatorId !== user.id) {
+      throw new ForbiddenException();
+    }
+
+    if (!template.spaceId) {
+      throw new ForbiddenException();
+    }
+
+    await this.validateCanManagePagesInSpace(template.spaceId, user);
   }
 
   private async validateCanCreateInScope(
@@ -270,10 +274,10 @@ export class TemplateService {
       throw new ForbiddenException();
     }
 
-    await this.validateCanManageSpaceTemplates(spaceId, user);
+    await this.validateCanManagePagesInSpace(spaceId, user);
   }
 
-  private async validateCanManageSpaceTemplates(spaceId: string, user: User) {
+  private async validateCanManagePagesInSpace(spaceId: string, user: User) {
     const ability = await this.spaceAbility.createForUser(user, spaceId);
     if (ability.cannot(SpaceCaslAction.Manage, SpaceCaslSubject.Page)) {
       throw new ForbiddenException();
