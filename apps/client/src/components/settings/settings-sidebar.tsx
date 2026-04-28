@@ -23,7 +23,7 @@ import { isCloud } from "@/lib/config.ts";
 import useUserRole from "@/hooks/use-user-role.tsx";
 import { useAtom } from "jotai";
 import { entitlementAtom } from "@/ee/entitlement/entitlement-atom";
-import { Feature } from "@/ee/features";
+import { Feature, isFeatureAvailable, isHiddenFeature } from "@/ee/features";
 import { useUpgradeLabel } from "@/ee/hooks/use-upgrade-label";
 import {
   prefetchApiKeyManagement,
@@ -153,14 +153,14 @@ export default function SettingsSidebar() {
     setActive(location.pathname);
   }, [location.pathname]);
 
-  const hasFeature = (f: string) =>
-    entitlements?.features?.includes(f) ?? false;
+  const hasFeature = (f: string) => isFeatureAvailable(f, entitlements?.features);
 
   const canShowItem = (item: DataItem) => {
     if (item.env === "cloud" && !isCloud()) return false;
     if (item.env === "selfhosted" && isCloud()) return false;
     if (item.role === "admin" && !isAdmin) return false;
     if (item.role === "owner" && !isOwner) return false;
+    if (item.feature && isHiddenFeature(item.feature)) return false;
     return true;
   };
 

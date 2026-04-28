@@ -1,6 +1,33 @@
 import { Injectable } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { EnvironmentService } from './environment.service';
+import { Feature } from '../../common/features';
+
+const builtInFeatures = new Set<string>([
+  Feature.API_KEYS,
+  Feature.COMMENT_RESOLUTION,
+  Feature.PAGE_PERMISSIONS,
+  Feature.AI,
+  Feature.ATTACHMENT_INDEXING,
+  Feature.MCP,
+  Feature.SCIM,
+  Feature.PAGE_VERIFICATION,
+  Feature.AUDIT_LOGS,
+  Feature.SHARING_CONTROLS,
+  Feature.TEMPLATES,
+  Feature.VIEWER_COMMENTS,
+]);
+
+const hiddenFeatures = new Set<string>([
+  Feature.SSO_CUSTOM,
+  Feature.SSO_GOOGLE,
+  Feature.MFA,
+  Feature.CONFLUENCE_IMPORT,
+  Feature.DOCX_IMPORT,
+  Feature.SECURITY_SETTINGS,
+  Feature.RETENTION,
+  Feature.PDF_EXPORT,
+]);
 
 @Injectable()
 export class LicenseCheckService {
@@ -27,6 +54,14 @@ export class LicenseCheckService {
   }
 
   hasFeature(licenseKey: string, feature: string, plan?: string): boolean {
+    if (hiddenFeatures.has(feature)) {
+      return false;
+    }
+
+    if (builtInFeatures.has(feature)) {
+      return true;
+    }
+
     if (this.environmentService.isCloud()) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -63,17 +98,22 @@ export class LicenseCheckService {
   }
 
   resolveFeatures(licenseKey: string, plan: string): string[] {
+    const visibleFeatures = (features: string[]) =>
+      [...new Set([...features, ...builtInFeatures])].filter(
+        (feature) => !hiddenFeatures.has(feature),
+      );
+
     if (this.environmentService.isCloud()) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const { getFeaturesForCloudPlan } = require('../../ee/licence/feature-registry');
-        return [...getFeaturesForCloudPlan(plan)];
+        return visibleFeatures([...getFeaturesForCloudPlan(plan)]);
       } catch {
-        return [];
+        return visibleFeatures([]);
       }
     }
 
-    return this.getFeatures(licenseKey);
+    return visibleFeatures(this.getFeatures(licenseKey));
   }
 
   resolveTier(licenseKey: string, plan: string): string {

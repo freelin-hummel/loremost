@@ -14,7 +14,7 @@ import DisablePublicSharing from "@/ee/security/components/disable-public-sharin
 import TrashRetention from "@/ee/security/components/trash-retention.tsx";
 
 import { useHasFeature } from "@/ee/hooks/use-feature";
-import { Feature } from "@/ee/features";
+import { Feature, isHiddenFeature } from "@/ee/features";
 
 export default function Security() {
   const { t } = useTranslation();
@@ -22,6 +22,10 @@ export default function Security() {
   const hasCustomSso = useHasFeature(Feature.SSO_CUSTOM);
   const hasRetention = useHasFeature(Feature.RETENTION);
   const hasSharingControls = useHasFeature(Feature.SHARING_CONTROLS);
+  const showMfa = !isHiddenFeature(Feature.MFA);
+  const showRetention = !isHiddenFeature(Feature.RETENTION);
+  const showSso =
+    !isHiddenFeature(Feature.SSO_CUSTOM) || !isHiddenFeature(Feature.SSO_GOOGLE);
 
   if (!isAdmin) {
     return null;
@@ -34,38 +38,49 @@ export default function Security() {
       </Helmet>
       <SettingsTitle title={t("Security")} />
 
-      <EnforceMfa />
-
-      <Divider my="lg" />
-
-      <DisablePublicSharing />
-      <Divider my="lg" />
-
-      <TrashRetention />
-      <Divider my="lg" />
-
-      <Title order={4} my="lg">
-        Single sign-on (SSO)
-      </Title>
-
-      <EnforceSso />
-      <Divider my="lg" />
-
-      {(isCloud() || hasCustomSso) && (
+      {showMfa && (
         <>
-          <AllowedDomains />
+          <EnforceMfa />
           <Divider my="lg" />
         </>
       )}
 
-      {hasCustomSso && (
+      <DisablePublicSharing />
+      <Divider my="lg" />
+
+      {showRetention && (
         <>
-          <CreateSsoProvider />
-          <Divider size={0} my="lg" />
+          <TrashRetention />
+          <Divider my="lg" />
         </>
       )}
 
-      <SsoProviderList />
+      {showSso && (
+        <>
+          <Title order={4} my="lg">
+            Single sign-on (SSO)
+          </Title>
+
+          <EnforceSso />
+          <Divider my="lg" />
+
+          {(isCloud() || hasCustomSso) && (
+            <>
+              <AllowedDomains />
+              <Divider my="lg" />
+            </>
+          )}
+
+          {hasCustomSso && (
+            <>
+              <CreateSsoProvider />
+              <Divider size={0} my="lg" />
+            </>
+          )}
+
+          <SsoProviderList />
+        </>
+      )}
     </>
   );
 }

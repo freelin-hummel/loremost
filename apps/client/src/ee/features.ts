@@ -19,3 +19,44 @@ export const Feature = {
   TEMPLATES: 'templates',
   VIEWER_COMMENTS: 'comment:viewer',
 } as const;
+
+const builtInFeatures = new Set<string>([
+  Feature.API_KEYS,
+  Feature.COMMENT_RESOLUTION,
+  Feature.PAGE_PERMISSIONS,
+  Feature.AI,
+  Feature.ATTACHMENT_INDEXING,
+  Feature.MCP,
+  Feature.SCIM,
+  Feature.PAGE_VERIFICATION,
+  Feature.AUDIT_LOGS,
+  Feature.SHARING_CONTROLS,
+  Feature.TEMPLATES,
+  Feature.VIEWER_COMMENTS,
+]);
+
+const hiddenFeatures = new Set<string>([
+  Feature.SSO_CUSTOM,
+  Feature.SSO_GOOGLE,
+  Feature.MFA,
+  Feature.CONFLUENCE_IMPORT,
+  Feature.DOCX_IMPORT,
+  Feature.SECURITY_SETTINGS,
+  Feature.RETENTION,
+]);
+
+export function isBuiltInFeature(feature: string): boolean {
+  return builtInFeatures.has(feature);
+}
+
+export function isHiddenFeature(feature: string): boolean {
+  return hiddenFeatures.has(feature);
+}
+
+export function isFeatureAvailable(feature: string, features: string[] = []): boolean {
+  if (isHiddenFeature(feature)) {
+    return false;
+  }
+
+  return isBuiltInFeature(feature) || features.includes(feature);
+}
