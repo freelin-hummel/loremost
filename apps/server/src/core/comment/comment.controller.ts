@@ -13,6 +13,7 @@ import { CommentService } from './comment.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { PageIdDto, CommentIdDto } from './dto/comments.input';
+import { ResolveCommentDto } from './dto/resolve-comment.dto';
 import { AuthUser } from '../../common/decorators/auth-user.decorator';
 import { AuthWorkspace } from '../../common/decorators/auth-workspace.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -120,7 +121,11 @@ export class CommentController {
 
   @HttpCode(HttpStatus.OK)
   @Post('update')
-  async update(@Body() dto: UpdateCommentDto, @AuthUser() user: User, @AuthWorkspace() workspace: Workspace) {
+  async update(
+    @Body() dto: UpdateCommentDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
     const comment = await this.commentRepo.findById(dto.commentId, {
       includeCreator: true,
       includeResolvedBy: true,
@@ -141,7 +146,11 @@ export class CommentController {
 
   @HttpCode(HttpStatus.OK)
   @Post('delete')
-  async delete(@Body() input: CommentIdDto, @AuthUser() user: User, @AuthWorkspace() workspace: Workspace) {
+  async delete(
+    @Body() input: CommentIdDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
     const comment = await this.commentRepo.findById(input.commentId);
     if (!comment) {
       throw new NotFoundException('Comment not found');
@@ -167,9 +176,7 @@ export class CommentController {
 
       // Space admin can delete any comment
       if (ability.cannot(SpaceCaslAction.Manage, SpaceCaslSubject.Settings)) {
-        throw new ForbiddenException(
-          'You can only delete your own comments',
-        );
+        throw new ForbiddenException('You can only delete your own comments');
       }
       await this.commentRepo.deleteComment(comment.id);
     }
@@ -192,5 +199,61 @@ export class CommentController {
         },
       },
     });
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('resolve')
+  async resolve(
+    @Body() dto: ResolveCommentDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const comment = await this.commentRepo.findById(dto.commentId, {
+      includeCreator: true,
+      includeResolvedBy: true,
+    });
+    if (!comment || comment.pageId !== dto.pageId) {
+      throw new NotFoundException('Comment not found');
+    }
+
+    const page = await this.pageRepo.findById(comment.pageId);
+    if (!page) {
+      throw new NotFoundException('Page not found');
+    }
+
+    await this.pageAccessService.validateCanComment(page, user, workspace.id);
+
+    const wasResolved = comment.resolvedAt != null;
+    const updatedComment = await this.commentService.resolve(
+      comment,
+      dto.resolved,
+      user,
+    );
+
+    if (wasResolved !== dto.resolved) {
+      this.auditService.log({
+        event: dto.resolved
+          ? AuditEvent.COMMENT_RESOLVED
+          : AuditEvent.COMMENT_REOPENED,
+        resourceType: AuditResource.COMMENT,
+        resourceId: comment.id,
+        spaceId: comment.spaceId,
+        metadata: {
+          pageId: comment.pageId,
+        },
+        changes: {
+          before: {
+            resolvedAt: comment.resolvedAt,
+            resolvedById: comment.resolvedById,
+          },
+          after: {
+            resolvedAt: updatedComment.resolvedAt,
+            resolvedById: updatedComment.resolvedById,
+          },
+        },
+      });
+    }
+
+    return updatedComment;
   }
 }
