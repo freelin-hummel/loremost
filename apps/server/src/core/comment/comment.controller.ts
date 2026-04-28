@@ -230,7 +230,8 @@ export class CommentController {
       user,
     );
 
-    if (wasResolved !== dto.resolved) {
+    const isResolved = updatedComment.resolvedAt != null;
+    if (wasResolved !== isResolved) {
       this.auditService.log({
         event: dto.resolved
           ? AuditEvent.COMMENT_RESOLVED

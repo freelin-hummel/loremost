@@ -218,7 +218,7 @@ export class CommentService {
   ): Promise<Comment> {
     const currentlyResolved = comment.resolvedAt != null;
     if (currentlyResolved === resolved) {
-      return this.findById(comment.id);
+      return comment;
     }
 
     const resolvedAt = resolved ? new Date() : null;
