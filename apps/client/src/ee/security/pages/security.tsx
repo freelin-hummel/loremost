@@ -14,13 +14,18 @@ import TrashRetention from "@/ee/security/components/trash-retention.tsx";
 
 import { Feature, isHiddenFeature } from "@/ee/features";
 
+function hasVisibleSsoProvider() {
+  return [Feature.SSO_CUSTOM, Feature.SSO_GOOGLE].some(
+    (feature) => !isHiddenFeature(feature),
+  );
+}
+
 export default function Security() {
   const { t } = useTranslation();
   const { isAdmin } = useUserRole();
   const showMfa = !isHiddenFeature(Feature.MFA);
   const showRetention = !isHiddenFeature(Feature.RETENTION);
-  const showSso =
-    !isHiddenFeature(Feature.SSO_CUSTOM) || !isHiddenFeature(Feature.SSO_GOOGLE);
+  const showSso = hasVisibleSsoProvider();
 
   if (!isAdmin) {
     return null;

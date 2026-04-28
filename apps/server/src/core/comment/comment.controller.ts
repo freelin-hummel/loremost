@@ -230,30 +230,31 @@ export class CommentController {
       user,
     );
 
-    const isResolved = updatedComment.resolvedAt != null;
-    if (wasResolved !== isResolved) {
-      this.auditService.log({
-        event: dto.resolved
-          ? AuditEvent.COMMENT_RESOLVED
-          : AuditEvent.COMMENT_REOPENED,
-        resourceType: AuditResource.COMMENT,
-        resourceId: comment.id,
-        spaceId: comment.spaceId,
-        metadata: {
-          pageId: comment.pageId,
-        },
-        changes: {
-          before: {
-            resolvedAt: comment.resolvedAt,
-            resolvedById: comment.resolvedById,
-          },
-          after: {
-            resolvedAt: updatedComment.resolvedAt,
-            resolvedById: updatedComment.resolvedById,
-          },
-        },
-      });
+    if (wasResolved === dto.resolved) {
+      return updatedComment;
     }
+
+    this.auditService.log({
+      event: dto.resolved
+        ? AuditEvent.COMMENT_RESOLVED
+        : AuditEvent.COMMENT_REOPENED,
+      resourceType: AuditResource.COMMENT,
+      resourceId: comment.id,
+      spaceId: comment.spaceId,
+      metadata: {
+        pageId: comment.pageId,
+      },
+      changes: {
+        before: {
+          resolvedAt: comment.resolvedAt,
+          resolvedById: comment.resolvedById,
+        },
+        after: {
+          resolvedAt: updatedComment.resolvedAt,
+          resolvedById: updatedComment.resolvedById,
+        },
+      },
+    });
 
     return updatedComment;
   }
