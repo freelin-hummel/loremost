@@ -18,6 +18,7 @@ export const Feature = {
   SHARING_CONTROLS: 'sharing:controls',
   TEMPLATES: 'templates',
   VIEWER_COMMENTS: 'comment:viewer',
+  PDF_EXPORT: 'export:pdf',
 } as const;
 
 const builtInFeatures = new Set<string>([
@@ -43,6 +44,7 @@ const hiddenFeatures = new Set<string>([
   Feature.DOCX_IMPORT,
   Feature.SECURITY_SETTINGS,
   Feature.RETENTION,
+  Feature.PDF_EXPORT,
 ]);
 
 export function isBuiltInFeature(feature: string): boolean {
