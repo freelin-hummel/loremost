@@ -13,6 +13,7 @@ import {
   Workspace,
 } from '@docmost/db/types/entity.types';
 import { KyselyDB } from '@docmost/db/types/kysely.types';
+import { JsonValue } from '@docmost/db/types/db';
 import { jsonToText } from '../../collaboration/collaboration.util';
 import { createYdocFromJson } from '../../common/helpers/prosemirror/utils';
 import { UserRole } from '../../common/helpers/types/permission';
@@ -81,14 +82,14 @@ export class TemplateService {
   ) {
     await this.validateCanCreateInScope(dto.spaceId ?? null, user, workspace);
 
-    const content = dto.content ?? null;
+    const content = (dto.content ?? null) as JsonValue | null;
     const inserted = await this.templateRepo.insertTemplate({
       title: dto.title.trim(),
       description: dto.description,
       icon: dto.icon,
       content,
-      textContent: content ? jsonToText(content) : null,
-      ydoc: content ? createYdocFromJson(content) : null,
+      textContent: content ? jsonToText(content as object) : null,
+      ydoc: content ? createYdocFromJson(content as object) : null,
       spaceId: dto.spaceId ?? null,
       workspaceId: workspace.id,
       creatorId: user.id,
@@ -174,7 +175,7 @@ export class TemplateService {
       icon: template.icon ?? undefined,
       spaceId: dto.spaceId,
       parentPageId: dto.parentPageId,
-      content: template.content ?? undefined,
+      content: (template.content ?? undefined) as object | undefined,
       format: template.content ? 'json' : undefined,
     });
   }
